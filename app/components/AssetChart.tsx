@@ -184,7 +184,7 @@ export default function AssetChart({ data, formatCurrency }: AssetChartProps) {
             strokeWidth={2}
             strokeDasharray="6 4"
             fill="url(#gradTarget)"
-            dot={false}
+            dot={data.length === 1 ? { r: 4 } : false}
             activeDot={false}
           />
 
@@ -196,7 +196,7 @@ export default function AssetChart({ data, formatCurrency }: AssetChartProps) {
             stroke="#4f46e5"
             strokeWidth={2.5}
             fill="url(#gradAssets)"
-            dot={false}
+            dot={data.length === 1 ? { r: 4 } : false}
             activeDot={{ r: 5, fill: "#4f46e5", stroke: "#fff", strokeWidth: 2 }}
           />
         </AreaChart>

@@ -1,11 +1,5 @@
-/**
- * ログインページ（サーバーコンポーネント）
- *
- * LoginForm（クライアントコンポーネント）を配信する。
- * ログイン後は /dashboard へ遷移する。
- */
-import LoginForm from "./components/LoginForm";
+import DashboardShell from "./components/DashboardShell";
 
-export default function LoginPage() {
-  return <LoginForm />;
+export default function HomePage() {
+  return <DashboardShell />;
 }

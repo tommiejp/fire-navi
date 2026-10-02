@@ -1,73 +1,9 @@
 "use client";
 
-/**
- * FireCalculator（コンテンツのみ）
- * ─────────────────────────────────────────────────────
- * FIREシミュレーターのメインコンテンツ。
- * ヘッダー・ナビゲーションは DashboardShell が担う。
- *
- * 機能：
- *   - 総資産・年間支出・利回りの入力
- *   - FIRE必要資産の計算（4%ルール）
- *   - 最大60年の資産シミュレーション
- *   - 結果のリアルタイム反映
- *   - localStorageへの自動保存・復元
- */
+import { useEffect, useState } from "react";
+import AssetChart from "./AssetChart";
+import { calculateFire, DEFAULT_DATA, isValidFireData, parseAmount, restoreFireData, STORAGE_KEY } from "../../lib/fire";
 
-import { useState, useEffect } from "react";
-import AssetChart, { SimulationPoint } from "./AssetChart";
-
-// ─── 型定義 ────────────────────────────────────────────
-interface FireData {
-  total_assets: number;    // 総資産（円）
-  annual_spending: number; // 年間支出（円）
-  return_rate: number;     // 年間利回り（0.03〜0.07）
-}
-
-// ─── 定数 ──────────────────────────────────────────────
-const STORAGE_KEY = "fire_navi_v1";
-
-// 初期値
-const DEFAULT_DATA: FireData = {
-  total_assets: 5_000_000,
-  annual_spending: 3_000_000,
-  return_rate: 0.05,
-};
-
-// ─── FIRE計算ロジック ─────────────────────────────────
-function calculateFire(data: FireData): {
-  fireTarget: number;
-  yearsToFire: number | null;
-  simulation: SimulationPoint[];
-} {
-  const { total_assets, annual_spending, return_rate } = data;
-
-  // FIRE必要資産 = 年間支出 ÷ 4%（安全引出率）
-  const fireTarget = Math.round(annual_spending / 0.04);
-
-  const simulation: SimulationPoint[] = [];
-  let currentAssets = total_assets;
-  let yearsToFire: number | null = null;
-
-  simulation.push({ year: 0, assets: currentAssets, target: fireTarget });
-
-  if (currentAssets >= fireTarget) {
-    yearsToFire = 0;
-  } else {
-    for (let year = 1; year <= 60; year++) {
-      currentAssets = Math.round(currentAssets * (1 + return_rate));
-      simulation.push({ year, assets: currentAssets, target: fireTarget });
-      if (yearsToFire === null && currentAssets >= fireTarget) {
-        yearsToFire = year;
-        break;
-      }
-    }
-  }
-
-  return { fireTarget, yearsToFire, simulation };
-}
-
-// ─── 金額フォーマット ─────────────────────────────────
 export function formatCurrency(amount: number): string {
   if (amount >= 100_000_000) {
     const oku = amount / 100_000_000;
@@ -79,211 +15,132 @@ export function formatCurrency(amount: number): string {
   return `${amount.toLocaleString()}円`;
 }
 
-// ─── 数値入力コンポーネント ────────────────────────────
-interface NumberInputProps {
-  label: string;
-  value: number;
-  onChange: (val: number) => void;
-  step?: number;
-  min?: number;
-  hint?: string;
-}
 
-function NumberInput({ label, value, onChange, step = 100_000, min = 0, hint }: NumberInputProps) {
-  const [raw, setRaw] = useState<string>(String(value));
-
-  useEffect(() => { setRaw(String(value)); }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const str = e.target.value;
-    setRaw(str);
-    const parsed = parseInt(str.replace(/,/g, ""), 10);
-    if (!isNaN(parsed)) onChange(Math.max(min, parsed));
-  };
-
-  const handleBlur = () => {
-    const parsed = parseInt(raw.replace(/,/g, ""), 10);
-    if (isNaN(parsed) || parsed < min) { onChange(min); setRaw(String(min)); }
-    else { onChange(parsed); setRaw(String(parsed)); }
-  };
-
+function AmountInput({ id, label, value, onChange, error, hint }: {
+  id: string; label: string; value: string; onChange: (value: string) => void;
+  error: string | null; hint?: string;
+}) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       <div className="relative">
-        <input
-          type="number"
-          value={raw}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          step={step}
-          min={min}
-          inputMode="numeric"
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 text-right text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 hover:bg-white transition-colors"
-        />
+        <input id={id} type="text" inputMode="numeric" value={value}
+          onChange={(e) => onChange(e.target.value)} aria-invalid={!!error}
+          aria-describedby={`${id}-help`} autoComplete="off" spellCheck={false}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-10 text-gray-900 text-right text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50" />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">円</span>
       </div>
-      {hint && <p className="text-xs text-indigo-500 mt-1 text-right font-medium">{hint}</p>}
+      <p id={`${id}-help`} className={`text-xs mt-1 text-right ${error ? "text-red-600" : "text-indigo-500"}`}>{error || hint}</p>
     </div>
   );
 }
 
-// ─── メインコンポーネント ──────────────────────────────
 export default function FireCalculator() {
-  const [data, setData] = useState<FireData>(DEFAULT_DATA);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [assets, setAssets] = useState(String(DEFAULT_DATA.total_assets));
+  const [spending, setSpending] = useState(String(DEFAULT_DATA.annual_spending));
+  const [rate, setRate] = useState(DEFAULT_DATA.return_rate);
+  const [hydrated, setHydrated] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState("");
+  const [saveFailed, setSaveFailed] = useState(false);
 
-  // localStorage 復元
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed: FireData = JSON.parse(saved);
-        if (
-          typeof parsed.total_assets === "number" &&
-          typeof parsed.annual_spending === "number" &&
-          typeof parsed.return_rate === "number"
-        ) {
-          setData(parsed);
+      if (saved !== null) {
+        const restored = restoreFireData(saved);
+        if (restored) {
+          setAssets(String(restored.total_assets));
+          setSpending(String(restored.annual_spending));
+          setRate(restored.return_rate);
+        } else {
+          setRestoreMessage("保存された入力を読み込めなかったため、初期値を表示しています。入力を確認してください。");
         }
       }
-    } catch { /* ignore */ }
-    setIsHydrated(true);
+    } catch {
+      setSaveFailed(true);
+    }
+    setHydrated(true);
   }, []);
 
-  // localStorage 自動保存
+  const assetInput = parseAmount(assets, false);
+  const spendingInput = parseAmount(spending, true);
+  const candidate = { total_assets: assetInput.value, annual_spending: spendingInput.value, return_rate: rate };
+  const data = isValidFireData(candidate) ? candidate : null;
+  const result = data ? calculateFire(data) : null;
+  const rateError = !Number.isFinite(rate) || rate < 0.03 || rate > 0.07;
+
   useEffect(() => {
-    if (!isHydrated) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
-  }, [data, isHydrated]);
+    // 復元前・無効な編集中の値を保存しない。既存の他機能のキーも触らない。
+    if (!hydrated || !edited) return;
+    const a = parseAmount(assets, false);
+    const s = parseAmount(spending, true);
+    const value = { total_assets: a.value, annual_spending: s.value, return_rate: rate };
+    if (!isValidFireData(value)) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+      setSaveFailed(false);
+      setRestoreMessage("");
+    } catch { setSaveFailed(true); }
+  }, [assets, spending, rate, hydrated, edited]);
 
-  const handleChange = <K extends keyof FireData>(key: K, value: FireData[K]) => {
-    setData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const { fireTarget, yearsToFire, simulation } = calculateFire(data);
-  const progressPct = Math.min(100, Math.round((data.total_assets / fireTarget) * 100));
-
-  if (!isHydrated) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-gray-400 text-sm animate-pulse">読み込み中…</p>
-      </div>
-    );
-  }
-
-  const heroBg = yearsToFire === 0 ? "from-emerald-600 to-emerald-500" : "from-indigo-700 to-indigo-500";
+  if (!hydrated) return <p className="py-20 text-center text-gray-500">読み込み中…</p>;
+  const progress = data && result ? Math.min(100, Math.round(data.total_assets / result.fireTarget * 100)) : 0;
 
   return (
     <div className="space-y-4">
-
-      {/* ① FIRE結果ヒーローカード */}
-      <div className={`rounded-2xl p-5 text-white bg-gradient-to-br ${heroBg} shadow-md`}>
-        <div className="mb-4">
-          <p className="text-indigo-200 text-xs font-medium tracking-wide uppercase mb-0.5">
-            {yearsToFire === 0 ? "ステータス" : "FIREまであと"}
-          </p>
-          {yearsToFire === null ? (
-            <div>
-              <p className="text-4xl font-black tracking-tight">60年以上</p>
-              <p className="text-indigo-200 text-xs mt-0.5">利回りや貯蓄額を見直してみましょう</p>
-            </div>
-          ) : yearsToFire === 0 ? (
-            <div>
-              <p className="text-4xl font-black tracking-tight">🎉 FIRE達成！</p>
-              <p className="text-emerald-100 text-xs mt-0.5">おめでとうございます。今すぐFIRE可能です</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-4xl font-black tracking-tight">
-                {yearsToFire}<span className="text-2xl font-bold ml-1">年</span>
-              </p>
-              <p className="text-indigo-200 text-xs mt-0.5">
-                {new Date().getFullYear() + yearsToFire}年頃にFIRE達成見込み
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* 達成率バー */}
-        <div className="bg-indigo-900/40 rounded-xl p-3">
-          <div className="flex justify-between text-xs mb-2">
-            <span className="text-indigo-200">達成率</span>
-            <span className="text-white font-bold">{progressPct}%</span>
+      {restoreMessage && <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{restoreMessage}</p>}
+      {result && data ? (
+        <section aria-label="計算結果" className={`rounded-2xl p-5 text-white bg-gradient-to-br ${result.yearsToFire === 0 ? "from-emerald-600 to-emerald-500" : "from-indigo-700 to-indigo-500"} shadow-md`}>
+          <p className="text-sm mb-1">{result.yearsToFire === 0 ? "目標資産への到達" : "FIREまであと（目安）"}</p>
+          {result.yearsToFire === null ? <p className="text-2xl font-black">60年以内では未到達</p>
+            : result.yearsToFire === 0 ? <><p className="text-3xl font-black">目標資産に到達（0年）</p><p className="text-sm mt-2">現在の資産は、4%ルールに基づく目標資産額に到達しています。</p></>
+            : <p className="text-4xl font-black">{result.yearsToFire}<span className="text-2xl ml-1">年</span></p>}
+          <div className="bg-black/10 rounded-xl p-3 mt-4">
+            <div className="flex justify-between text-xs mb-2"><span>達成率</span><span>{progress}%</span></div>
+            <div className="w-full bg-black/10 rounded-full h-2 overflow-hidden"><div className="h-2 rounded-full bg-white" style={{ width: `${progress}%` }} /></div>
+            <div className="flex justify-between gap-3 text-xs mt-2"><p>現在の資産<br /><strong className="text-sm">{formatCurrency(data.total_assets)}</strong></p><p className="text-right">FIRE目標<br /><strong className="text-sm">{formatCurrency(result.fireTarget)}</strong></p></div>
           </div>
-          <div className="w-full bg-indigo-900/50 rounded-full h-2 overflow-hidden">
-            <div className="h-2 rounded-full bg-white transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
-          </div>
-          <div className="flex justify-between text-xs mt-2">
-            <div>
-              <span className="text-indigo-300">現在の資産</span><br />
-              <span className="text-white font-semibold text-sm">{formatCurrency(data.total_assets)}</span>
-            </div>
-            <div className="text-right">
-              <span className="text-indigo-300">FIRE目標</span><br />
-              <span className="text-white font-semibold text-sm">{formatCurrency(fireTarget)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        </section>
+      ) : <p role="alert" className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">入力内容を確認してください。正しい値を入力すると計算結果が表示されます。</p>}
 
-      {/* ② 入力フォーム */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm space-y-5">
+      <p className="text-xs text-gray-600 leading-relaxed px-1">この結果は、入力した資産全額を一定利回りで運用し、追加積立・途中の取り崩しをしない場合の概算です。税金・手数料・インフレ・利回りの変動は考慮していません。4%ルールは目標資産の目安であり、FIRE達成や将来の運用成果を保証するものではありません。</p>
+
+      <section className="bg-white rounded-2xl p-5 shadow-sm space-y-5">
         <h2 className="text-sm font-bold text-gray-800">📝 資産情報を入力</h2>
-        <NumberInput label="総資産" value={data.total_assets} onChange={(v) => handleChange("total_assets", v)} step={500_000} hint={formatCurrency(data.total_assets)} />
-        <NumberInput label="年間支出" value={data.annual_spending} onChange={(v) => handleChange("annual_spending", Math.max(1, v))} step={100_000} min={1} hint={formatCurrency(data.annual_spending)} />
+        <AmountInput id="total-assets" label="総資産" value={assets} onChange={(v) => { setAssets(v); setEdited(true); }} error={assetInput.error} hint={assetInput.value !== null ? formatCurrency(assetInput.value) : undefined} />
+        <AmountInput id="annual-spending" label="年間支出" value={spending} onChange={(v) => { setSpending(v); setEdited(true); }} error={spendingInput.error} hint={spendingInput.value !== null ? formatCurrency(spendingInput.value) : undefined} />
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">年間利回り</label>
-            <div className="text-right">
-              <span className="text-xl font-black text-indigo-600">{(data.return_rate * 100).toFixed(1)}</span>
-              <span className="text-sm font-bold text-indigo-500 ml-0.5">%</span>
-            </div>
-          </div>
-          <input
-            type="range" min={0.03} max={0.07} step={0.001} value={data.return_rate}
-            onChange={(e) => handleChange("return_rate", parseFloat(e.target.value))}
-            className="w-full"
-          />
-          <div className="flex justify-between text-[11px] text-gray-400 mt-1.5">
-            <span>3%（安定）</span><span>5%（標準）</span><span>7%（積極）</span>
-          </div>
+          <div className="flex justify-between items-center mb-2"><label htmlFor="return-rate" className="text-sm font-medium text-gray-700">年間利回り</label><span className="text-xl font-black text-indigo-600">{(rate * 100).toFixed(1)}%</span></div>
+          <input id="return-rate" type="range" min={0.03} max={0.07} step={0.001} value={rate} onChange={(e) => { setRate(Number(e.target.value)); setEdited(true); }} className="w-full focus-visible:outline-2 focus-visible:outline-indigo-600" aria-invalid={rateError} />
+          <div className="flex justify-between text-xs text-gray-500 mt-1.5"><span>3%</span><span>5%</span><span>7%</span></div>
+          {rateError && <p className="text-xs text-red-600">利回りは3〜7%で入力してください。</p>}
         </div>
-      </div>
+        <p className="text-xs text-gray-500">金額は半角数字・円単位の整数（1兆円以下）で入力してください。</p>
+        <p className="text-xs text-gray-600 leading-relaxed">入力データはこのブラウザ内に保存されます。別端末への同期・バックアップは行われません。無効な入力は保存されず、再読み込み時は最後の有効な入力に戻ります。</p>
+        {saveFailed && <p role="status" className="text-xs text-amber-800">このブラウザでは入力を保存できません。計算はそのまま利用できます。</p>}
+      </section>
 
-      {/* ③ サマリーカード */}
-      <div className="grid grid-cols-3 gap-3">
-        <SummaryCard label="FIRE目標資産" value={formatCurrency(fireTarget)} icon="🎯" />
-        <SummaryCard label="不足額" value={data.total_assets >= fireTarget ? "達成済み ✅" : formatCurrency(fireTarget - data.total_assets)} icon="📉" />
-        <SummaryCard label="年間引出可能額" value={formatCurrency(Math.round(data.total_assets * 0.04))} icon="💸" />
-      </div>
-
-      {/* ④ 資産推移グラフ */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-800 mb-1">📈 資産推移シミュレーション</h2>
-        <p className="text-[11px] text-gray-400 mb-4">
-          利回り {(data.return_rate * 100).toFixed(1)}% で複利運用した場合の推移
-        </p>
-        <AssetChart data={simulation} formatCurrency={formatCurrency} />
-      </div>
-
-      {/* ⑤ 計算ロジック */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm space-y-2.5">
-        <h2 className="text-sm font-bold text-gray-800">📐 計算ロジック</h2>
-        <FormulaRow label="FIRE必要資産" formula="年間支出 ÷ 4%（4%ルール）" result={formatCurrency(fireTarget)} />
-        <FormulaRow label="毎年の資産成長" formula="資産 × (1 + 利回り)" result="複利計算" />
-        <FormulaRow label="安全引出率" formula="年間支出 ÷ 総資産" result={`${((data.annual_spending / Math.max(data.total_assets, 1)) * 100).toFixed(1)}%`} />
-      </div>
-
-      <p className="text-[11px] text-gray-400 text-center leading-relaxed px-2">
-        ※ 本シミュレーションは参考情報です。実際の運用成果を保証するものではありません。
-        <br />投資にはリスクが伴います。詳細はファイナンシャルアドバイザーにご相談ください。
-      </p>
+      {result && data && <>
+        <div className="grid grid-cols-2 gap-3">
+          <SummaryCard label="FIRE目標資産" value={formatCurrency(result.fireTarget)} icon="🎯" />
+          <SummaryCard label="目標までの不足額" value={formatCurrency(Math.max(0, result.fireTarget - data.total_assets))} icon="📉" />
+        </div>
+        <section className="bg-white rounded-2xl p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-800 mb-1">📈 資産推移シミュレーション</h2>
+          <p className="text-xs text-gray-500 mb-4">利回り {(rate * 100).toFixed(1)}% で複利運用した場合の推移</p>
+          <AssetChart data={result.simulation} formatCurrency={formatCurrency} />
+        </section>
+        <section className="bg-white rounded-2xl p-5 shadow-sm space-y-2.5">
+          <h2 className="text-sm font-bold text-gray-800">📐 計算ロジック</h2>
+          <FormulaRow label="FIRE必要資産" formula="年間支出 ÷ 4%（4%ルール）" result={formatCurrency(result.fireTarget)} />
+          <FormulaRow label="毎年の資産成長" formula="資産 × (1 + 利回り)" result="複利計算" />
+        </section>
+      </>}
     </div>
   );
 }
 
-// ─── サブコンポーネント ────────────────────────────────
 function SummaryCard({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
     <div className="bg-white rounded-2xl p-3.5 shadow-sm text-center">
