@@ -52,6 +52,7 @@ export default async function HistoryPage() {
   return <main className="mx-auto max-w-2xl px-4 py-10">
     <nav aria-label="ページ移動" className="flex flex-wrap gap-4 text-sm text-indigo-700 underline underline-offset-4">
       <Link href="/my-plan">マイプランへ戻る</Link>
+      <Link href="/account">アカウント</Link>
       <Link href="/">FIREナビトップへ戻る</Link>
     </nav>
     <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-title">

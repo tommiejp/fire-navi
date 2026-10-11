@@ -48,6 +48,7 @@ export default async function MyPlanPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <Link href="/" className="text-sm font-medium text-indigo-700 underline underline-offset-4">← FIREナビトップへ戻る</Link>
+      <Link href="/account" className="ml-4 text-sm text-indigo-700 underline">アカウント</Link>
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="plan-title">
         <h1 id="plan-title" className="text-2xl font-bold text-gray-900">マイプラン</h1>
         <p className="mt-3 text-sm text-gray-600">ログイン済み</p>
