@@ -36,3 +36,20 @@ export async function saveFinancialSettings(form: FormData): Promise<SaveResult>
     return { status: "SERVER_ERROR" };
   }
 }
+
+export async function recordCurrentAssets(form: FormData): Promise<SaveResult> {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { status: "UNAUTHORIZED" };
+    const total_assets = amount(form.get("total_assets"), 0);
+    if (total_assets === null) return { status: "VALIDATION_ERROR" };
+    const supabase = await createClient({ writableCookies: true });
+    // Ownership comes only from Auth; the database supplies id and recorded_at.
+    const { error } = await supabase.from("asset_history").insert({
+      user_id: user.id, total_assets,
+    });
+    return { status: error ? "SERVER_ERROR" : "SUCCESS" };
+  } catch {
+    return { status: "SERVER_ERROR" };
+  }
+}
