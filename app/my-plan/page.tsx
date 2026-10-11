@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
 
+import SettingsForm from "./SettingsForm";
+
 export const dynamic = "force-dynamic";
 
 type FinancialSettings = {
@@ -60,6 +62,7 @@ export default async function MyPlanPage() {
             <div><dt className="text-gray-600">更新日時</dt><dd className="mt-1 break-words"><time dateTime={settings.updated_at}>{settings.updated_at}</time></dd></div>
           </dl>
         ) : <p className="mt-3 text-sm text-gray-600">設定はまだありません</p>}
+        {!readFailed && <SettingsForm initial={settings} />}
       </section>
     </main>
   );

@@ -9,6 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 function load({ user = { email: "member@example.com" }, authError, result = { data: null, error: null }, clientError, queryError } = {}) {
   const calls = [];
   const mocks = {
+    "./SettingsForm": { default: () => null },
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/navigation": { redirect: path => { throw Error(`REDIRECT:${path}`); } },
     "@/lib/auth/user": { getAuthenticatedUser: async () => { calls.push("auth"); if (authError) throw authError; return user; } },
