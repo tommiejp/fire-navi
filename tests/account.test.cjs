@@ -10,9 +10,12 @@ function load(file,mocks){
 }
 const navigation={redirect:p=>{throw Error(`REDIRECT:${p}`)}};
 function page(user,error){return load("app/account/page.tsx",{
+ "next/cache":{revalidatePath:()=>{}},
  "next/navigation":navigation,
  "next/link":{default:({children,...props})=>React.createElement("a",props,children)},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>{if(error)throw error;return user}},
+ "./ProfileForm":{default:()=>null},
+ "@/lib/supabase/server":{createClient:async()=>({from:()=>({select:()=>({maybeSingle:async()=>({data:null,error:null})})})})},
  "./LogoutForm":{default:()=>React.createElement("button",null,"ログアウト")},
 })}
 test("account is dynamic and redirects unauthenticated visitors",async()=>{
@@ -30,6 +33,8 @@ test("auth failure renders a generic error without protected details",async()=>{
 function action(failure){
  const calls=[];
  return {calls,...load("app/account/actions.ts",{
+ "@/lib/auth/user":{getAuthenticatedUser:async()=>null},
+ "next/cache":{revalidatePath:()=>{}},
  "next/navigation":navigation,
  "@/lib/supabase/server":{createClient:async options=>{
  calls.push(options);if(failure==="client")throw Error("private token");

@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { getAuthenticatedUser } from "@/lib/auth/user";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,4 +18,27 @@ export async function logout(): Promise<LogoutResult> {
   }
   // Next.js redirect throws; do not catch the successful redirect.
   redirect("/");
+}
+
+export type ProfileResult = { status: "SUCCESS" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "SERVER_ERROR" };
+
+export async function updateProfile(form: FormData): Promise<ProfileResult> {
+  try {
+    const user = await getAuthenticatedUser();
+    if (!user) return { status: "UNAUTHORIZED" };
+    const raw = form.get("display_name");
+    if (typeof raw !== "string") return { status: "VALIDATION_ERROR" };
+    const display_name = raw.trim();
+    if ([...display_name].length > 50) return { status: "VALIDATION_ERROR" };
+    const supabase = await createClient({ writableCookies: true });
+    const { data, error } = await supabase.from("profiles")
+      .update({ display_name }).eq("user_id", user.id)
+      .select("display_name").maybeSingle();
+    // A missing row is not a successful update. Profiles are created by the DB trigger.
+    if (error || !data) return { status: "SERVER_ERROR" };
+    revalidatePath("/account");
+    return { status: "SUCCESS" };
+  } catch {
+    return { status: "SERVER_ERROR" };
+  }
 }
