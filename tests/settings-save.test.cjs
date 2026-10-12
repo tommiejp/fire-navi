@@ -10,6 +10,7 @@ function load(file,mocks,browser={}) {
 function setup({user={id:"verified"},error=null,fail=false}={}) {
  const rows=new Map(),calls=[];
  const api=load("app/my-plan/actions.ts",{
+ "@/lib/rate-limit":{checkRateLimit:async()=>"ALLOWED"},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>user},
  "next/cache":{revalidatePath:p=>calls.push(p)},
  "@/lib/supabase/server":{createClient:async options=>{

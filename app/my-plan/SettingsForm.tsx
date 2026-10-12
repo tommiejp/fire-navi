@@ -5,6 +5,7 @@ import { saveFinancialSettings, type SaveResult } from "./actions";
 
 type Settings = { total_assets: number | string; annual_expenses: number | string; expected_return: number | string };
 const messages = {
+  RATE_LIMITED: "操作が多すぎます。少し待ってから再度お試しください。",
   SUCCESS: "保存しました。",
   VALIDATION_ERROR: "総資産は0以上、年間支出は1以上の整数、利回りは0〜20の数値（小数2桁まで）で入力してください。金額は安全に扱える整数の範囲内で入力してください。",
   UNAUTHORIZED: "ログインが必要です。再度ログインしてください。",

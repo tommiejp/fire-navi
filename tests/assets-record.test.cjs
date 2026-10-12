@@ -12,6 +12,7 @@ function setup({user={id:"verified"},error=null,failAt=null}={}) {
  const writes=[];
  let clients=0;
  const api=load("app/my-plan/actions.ts",{
+ "@/lib/rate-limit":{checkRateLimit:async()=>"ALLOWED"},
  "next/cache":{revalidatePath:()=>{throw Error("No revalidation needed");}},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>{if(failAt==="auth")throw Error("private auth");return user;}},
  "@/lib/supabase/server":{createClient:async options=>{

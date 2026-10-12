@@ -33,6 +33,7 @@ test("auth failure renders a generic error without protected details",async()=>{
 function action(failure){
  const calls=[];
  return {calls,...load("app/account/actions.ts",{
+ "@/lib/rate-limit":{checkRateLimit:async()=>"ALLOWED"},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>null},
  "next/cache":{revalidatePath:()=>{}},
  "next/navigation":navigation,

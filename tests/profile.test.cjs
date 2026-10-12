@@ -11,6 +11,7 @@ function load(file,mocks,browser={}) {
 function setup({user={id:"verified"},error=null,missing=false}={}){
  const calls=[];
  const api=load("app/account/actions.ts",{
+ "@/lib/rate-limit":{checkRateLimit:async()=>"ALLOWED"},
  "next/navigation":{redirect:()=>{}},"next/cache":{revalidatePath:p=>calls.push(p)},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>user},
  "@/lib/supabase/server":{createClient:async options=>{assert.deepEqual(options,{writableCookies:true});return {from:table=>{calls.push(table);return {update:payload=>{calls.push(payload);return {eq:(...args)=>{calls.push(args);return {select:columns=>{calls.push(columns);return {maybeSingle:async()=>({data:missing?null:{display_name:"ok"},error})}}}}}}}}}}},

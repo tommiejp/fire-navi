@@ -1,5 +1,6 @@
 "use server";
 
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { redirect } from "next/navigation";
@@ -20,12 +21,14 @@ export async function logout(): Promise<LogoutResult> {
   redirect("/");
 }
 
-export type ProfileResult = { status: "SUCCESS" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "SERVER_ERROR" };
+export type ProfileResult = { status: "SUCCESS" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "RATE_LIMITED" | "SERVER_ERROR" };
 
 export async function updateProfile(form: FormData): Promise<ProfileResult> {
   try {
     const user = await getAuthenticatedUser();
     if (!user) return { status: "UNAUTHORIZED" };
+    const limit = await checkRateLimit("updateProfile", user.id);
+    if (limit !== "ALLOWED") return { status: limit };
     const raw = form.get("display_name");
     if (typeof raw !== "string") return { status: "VALIDATION_ERROR" };
     const display_name = raw.trim();

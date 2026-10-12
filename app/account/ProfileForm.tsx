@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { updateProfile, type ProfileResult } from "./actions";
 
 const messages = {
+  RATE_LIMITED: "操作が多すぎます。少し待ってから再度お試しください。",
   SUCCESS: "表示名を保存しました。",
   VALIDATION_ERROR: "表示名は50文字以下で入力してください。",
   UNAUTHORIZED: "ログインが必要です。再度ログインしてください。",

@@ -1,10 +1,11 @@
 "use server";
 
+import { checkRateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
 
-export type SaveResult = { status: "SUCCESS" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "SERVER_ERROR" };
+export type SaveResult = { status: "SUCCESS" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "RATE_LIMITED" | "SERVER_ERROR" };
 
 function amount(value: FormDataEntryValue | null, minimum: number): number | null {
   if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
@@ -16,6 +17,8 @@ export async function saveFinancialSettings(form: FormData): Promise<SaveResult>
   try {
     const user = await getAuthenticatedUser();
     if (!user) return { status: "UNAUTHORIZED" };
+    const limit = await checkRateLimit("saveFinancialSettings", user.id);
+    if (limit !== "ALLOWED") return { status: limit };
     const total_assets = amount(form.get("total_assets"), 0);
     const annual_expenses = amount(form.get("annual_expenses"), 1);
     const rawReturn = form.get("expected_return");
@@ -41,6 +44,8 @@ export async function recordCurrentAssets(form: FormData): Promise<SaveResult> {
   try {
     const user = await getAuthenticatedUser();
     if (!user) return { status: "UNAUTHORIZED" };
+    const limit = await checkRateLimit("recordCurrentAssets", user.id);
+    if (limit !== "ALLOWED") return { status: limit };
     const total_assets = amount(form.get("total_assets"), 0);
     if (total_assets === null) return { status: "VALIDATION_ERROR" };
     const supabase = await createClient({ writableCookies: true });

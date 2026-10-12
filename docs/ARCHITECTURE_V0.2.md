@@ -96,7 +96,11 @@ Client Validation → Server Authentication → Rate Limit → Server Validation
 | recordCurrentAssets | 10回 / 分 / user |
 | updateProfile | 10回 / 分 / user |
 
-FIRE計算自体には適用しない。keyはServerで確定した`user_id + action`。Rate Limitは専用の境界（adapter）へ分離し、Redis系の共有ストアへ接続できる設計とする。データをFIREナビ本体のPostgreSQLには保存しない。複数インスタンスで整合する原子的カウント・TTLが必要で、プロセス内メモリだけを本番保証としない。今回はadapter・ストアとも実装しない。ストア選定と障害時のWrite拒否方針は実装前に決める。
+FIRE計算自体には適用しない。keyはServerで確定した`user_id + action`。Rate Limitは専用の境界（adapter）へ分離し、Redis系の共有ストアへ接続できる設計とする。データをFIREナビ本体のPostgreSQLには保存しない。複数インスタンスで整合する原子的カウント・TTLが必要で、プロセス内メモリだけを本番保証としない。Rate Limit境界は`lib/rate-limit`で実装する。認証後、入力検証より前にカウントし、不正入力やDBエラーも回数に含む。各ユーザー・Actionの初回要求から60秒の固定窓とし、TTL期限後にカウントを再開する（厳密な移動窓ではない）。上限超過の要求も加算するがTTLは延長しない。
+
+共有ストアは`RateLimitStore.incrementWithTtl`を実装し、増分と初回TTL設定を原子的に行う。Redis系adapterへの差替え箇所は`lib/rate-limit/index.ts`の構成部分。今回、共有ストアの接続は未実装で、既定ストアは必ず利用不能を返す。開発・本番ともmemory fallbackを持たず、接続実装まで3つの書込みActionはSERVER_ERRORとなる。単体テストのみ注入したfakeを使用する。
+
+ストア未設定・障害・不正応答の場合はSERVER_ERRORを返し、DB書込みへ進まない。RATE_LIMITEDとは区別し、無制限通過やraw store errorの表示・ログ出力はしない。呼称としての「fail closed」ではなく、本書では「バックエンド障害による書込み停止」と明記する。
 
 このSQLのauthenticated権限とRLSは、Supabase Data APIへの直接アクセスでも本人の操作を許可する。したがってServer ActionのRate Limitは直接DB API操作まで保証しない。RLSは所有者分離の仕組みでありRate Limitではない。v0.2公開前に、Data API側を含む制限が必要か、直接アクセスの制約方法を決定する。service_roleでRLSを迂回する解決は採用しない。
 

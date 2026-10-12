@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { recordCurrentAssets, type SaveResult } from "./actions";
 
 const messages = {
+  RATE_LIMITED: "操作が多すぎます。少し待ってから再度お試しください。",
   SUCCESS: "資産を履歴に記録しました。",
   VALIDATION_ERROR: "総資産は0〜9,007,199,254,740,991円の整数で入力してください。",
   UNAUTHORIZED: "ログインが必要です。再度ログインしてください。",
