@@ -117,7 +117,15 @@ Security Headersの設計対象:
 - Referrer-Policy: strict-origin-when-cross-originを基本とし、認証callbackにはno-referrerを検討する。
 - Permissions-Policy: camera=(), microphone=(), geolocation=()など未使用機能を無効化する。
 
-ヘッダーは設計対象のみで今回は設定しない。
+Security Headersは`next.config.ts`で全パスに設定する。callbackだけReferrer-Policyをno-referrerで上書きする。HSTSは今回対象外。
+
+段階導入の第1段階として、開発・本番ともContent-Security-Policyでobject-src none、base-uri self、frame-ancestors noneを強制する。詳細ポリシーはContent-Security-Policy-Report-Onlyとして同時送信する。default/script/style/img/fontはself、frame-srcはnone、form-actionはself。connect-srcはselfとNEXT_PUBLIC_SUPABASE_URLの検証済みoriginのみ。本番にunsafe-eval・unsafe-inline・wildcard・data:・blob:は追加しない。開発のみNext.js開発runtime用unsafe-evalとlocalhost/127.0.0.1の開発ポートへのWebSocketを報告対象ポリシーで許可する。
+
+Next.jsのインラインbootstrap/RSCスクリプトやグラフのinline styleは現時点ではReport-Onlyの違反として記録され得るが、遮断しない。報告先サービスは今回作成せず、ブラウザDevToolsで確認する（外部への違反レポート送信なし）。この段階ではスクリプトのCSP保護は未強制。全面強制には静的生成への影響も含めたnonce/hash設計と、実ブラウザの認証・グラフ動作確認が必要。
+
+Google OAuthはSupabase SDKによるトップレベル遷移であり、Googleのscript/frame/connect許可は不要。callbackはアプリ内、Server Actionは同一origin。Upstash RESTはserver-onlyの通信でブラウザCSPの対象外のため、Upstash originやsecretをヘッダーに追加しない。next/fontはセルフホストするためGoogle Fonts originも不要。Supabase Realtimeや外部画像は未使用で許可しない。
+
+ヘッダーはbuild時の設定に基づくため、Supabase公開URLを変更した場合は再buildが必要。設定されていなければSupabase originを追加せず、ログイン実機検証前に設定を確認する。
 
 ## エラー・ログ・Secrets
 
