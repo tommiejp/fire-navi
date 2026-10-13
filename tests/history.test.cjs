@@ -5,6 +5,8 @@ const { renderToStaticMarkup } = require("react-dom/server");
 function setup({user={id:"verified"},data=[],error=null,failAt=null}={}) {
   const calls=[];
   const mocks={
+    "./AssetHistoryChart":{default:()=>null},
+    "@/lib/asset-history-chart":{toAssetPoints:()=>[]},
     "next/link":{default:({children,...props})=>React.createElement("a",props,children)},
     "next/navigation":{redirect:target=>{throw Error(`REDIRECT:${target}`)}},
     "@/lib/auth/user":{getAuthenticatedUser:async()=>{calls.push("auth");if(failAt==="auth")throw Error("private detail");return user;}},

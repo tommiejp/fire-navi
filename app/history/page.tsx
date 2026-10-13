@@ -1,3 +1,5 @@
+import AssetHistoryChart from "./AssetHistoryChart";
+import { toAssetPoints } from "@/lib/asset-history-chart";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth/user";
@@ -60,6 +62,7 @@ export default async function HistoryPage() {
       {readFailed ? <p role="alert" className="mt-4 text-sm text-red-700">資産履歴を取得できませんでした。時間をおいて再度お試しください。</p>
         : history.length === 0 ? <p className="mt-4 text-gray-600">まだ資産履歴はありません</p>
         : <>
+          <AssetHistoryChart points={toAssetPoints(history)} />
           <p className="mt-2 text-sm text-gray-600">新しい記録から表示しています。日時は日本時間です。</p>
           <ul className="mt-4 divide-y divide-gray-200">
             {history.map(row => <li key={row.id} className="py-4">
