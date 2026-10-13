@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
 
+import FireProgress from "./FireProgress";
 import SettingsForm from "./SettingsForm";
 import AssetHistoryForm from "./AssetHistoryForm";
 
@@ -66,6 +67,7 @@ export default async function MyPlanPage() {
         ) : <p className="mt-3 text-sm text-gray-600">設定はまだありません</p>}
         {!readFailed && <SettingsForm initial={settings} />}
       </section>
+      {!readFailed && <FireProgress settings={settings} />}
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-record-title">
         <h2 id="history-record-title" className="text-lg font-semibold">現在の資産を履歴に記録</h2>
         <p className="mt-2 text-sm text-gray-600">記録はFIRE設定の保存とは別に行われます。</p>
