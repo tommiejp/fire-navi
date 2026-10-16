@@ -9,6 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 function load({ user = { email: "member@example.com" }, authError, result = { data: null, error: null }, clientError, queryError } = {}) {
   const calls = [];
   const mocks = {
+    "./AssetChange": { default: () => null },
     "./FireProgress": { default: () => null },
     "./AssetHistoryForm": { default: () => null },
     "./SettingsForm": { default: () => null },
