@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth/user";
 import { createClient } from "@/lib/supabase/server";
 
+import ScenarioComparison from "./ScenarioComparison";
 import AssetChange from "./AssetChange";
 import FireForecast from "./FireForecast";
 import FireProjection from "./FireProjection";
@@ -75,6 +76,7 @@ export default async function MyPlanPage() {
       {!readFailed && <FireProgress settings={settings} />}
       {!readFailed && <FireForecast settings={settings} />}
       {!readFailed && <FireProjection settings={settings} />}
+      {!readFailed && settings && <ScenarioComparison key={JSON.stringify([settings.total_assets, settings.annual_expenses, settings.monthly_contribution, settings.expected_return])} settings={settings} />}
       <AssetChange />
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-record-title">
         <h2 id="history-record-title" className="text-lg font-semibold">現在の資産を履歴に記録</h2>

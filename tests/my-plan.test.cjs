@@ -10,6 +10,7 @@ function load({ user = { email: "member@example.com" }, authError, result = { da
   const calls = [];
   const initialValues = [];
   const mocks = {
+    "./ScenarioComparison": { default: () => null },
     "./FireProjection": { default: () => null },
     "./FireForecast": { default: () => null },
     "./AssetChange": { default: () => null },
