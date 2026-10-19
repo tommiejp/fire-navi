@@ -8,11 +8,12 @@ const { renderToStaticMarkup } = require("react-dom/server");
 
 function load({ user = { email: "member@example.com" }, authError, result = { data: null, error: null }, clientError, queryError } = {}) {
   const calls = [];
+  const initialValues = [];
   const mocks = {
     "./AssetChange": { default: () => null },
     "./FireProgress": { default: () => null },
     "./AssetHistoryForm": { default: () => null },
-    "./SettingsForm": { default: () => null },
+    "./SettingsForm": { default: ({initial}) => { initialValues.push(initial); return null; } },
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/navigation": { redirect: path => { throw Error(`REDIRECT:${path}`); } },
     "@/lib/auth/user": { getAuthenticatedUser: async () => { calls.push("auth"); if (authError) throw authError; return user; } },
@@ -37,7 +38,7 @@ function load({ user = { email: "member@example.com" }, authError, result = { da
     if (name === "react/jsx-runtime") return require(name);
     throw Error(`Unexpected import ${name}`);
   }, module, module.exports);
-  return { page: module.exports.default, dynamic: module.exports.dynamic, calls };
+  return { page: module.exports.default, dynamic: module.exports.dynamic, calls, initialValues };
 }
 
 test("unauthenticated access redirects before creating a DB client", async () => {
@@ -52,7 +53,7 @@ test("authenticated empty state and minimal RLS query ignore supplied user_id", 
   const html = renderToStaticMarkup(await page({ searchParams: { user_id: "attacker" }, user_id: "attacker" }));
   for (const text of ["マイプラン", "ログイン済み", "member@example.com", "設定はまだありません", 'href="/"']) assert.ok(html.includes(text));
   assert.ok(!html.includes("attacker"));
-  assert.deepEqual(calls, ["auth", ["client"], ["from", "user_financial_settings"], ["select", "total_assets, annual_expenses, expected_return, updated_at"], "maybeSingle"]);
+  assert.deepEqual(calls, ["auth", ["client"], ["from", "user_financial_settings"], ["select", "total_assets, annual_expenses, expected_return, monthly_contribution, updated_at"], "maybeSingle"]);
 });
 
 test("settings returned by the session-scoped DB read are displayed", async () => {
@@ -83,4 +84,17 @@ test("auth failure exposes no protected contents and never reads the database", 
   assert.ok(html.includes("認証を確認できませんでした"));
   for (const text of ["private auth error", "member@example.com", "ログイン済み", "FIRE設定"]) assert.ok(!html.includes(text));
   assert.deepEqual(calls, ["auth"]);
+});
+
+test("monthly contribution is read into the form, missing values default to zero", async()=>{
+ for(const value of [undefined,null,0,50000]){
+  const data={total_assets:100,annual_expenses:200,expected_return:5,updated_at:"2026-10-16T00:00:00Z"};
+  if(value!==undefined)data.monthly_contribution=value;
+  const {page,initialValues}=load({result:{data,error:null}});
+  const html=renderToStaticMarkup(await page({searchParams:{user_id:"attacker"}}));
+  assert.equal(initialValues[0].monthly_contribution,value??0);
+  assert.ok(html.includes("毎月の積立額"));
+  assert.ok(html.includes((value??0)+" 円"));
+  assert.ok(!html.includes("attacker"));
+ }
 });

@@ -40,7 +40,7 @@ function actionHarness(name,{user={id:"verified"},count=1,fail=false}={}){
  "@/lib/rate-limit":{checkRateLimit:check},
  "@/lib/supabase/server":{createClient:async()=>{events.push("db");return {from:query.from}}},
  });
- return {events,run:invalid=>api[name]({get:key=>{events.push(["input",key]);return invalid?"":({total_assets:"0",annual_expenses:"1",expected_return:"5",display_name:"ok",user_id:"attacker"})[key]}})};
+ return {events,run:invalid=>api[name]({get:key=>{events.push(["input",key]);return invalid?"":({total_assets:"0",annual_expenses:"1",monthly_contribution:"0",expected_return:"5",display_name:"ok",user_id:"attacker"})[key]}})};
 }
 test("all actions: auth then rate limit then validation then DB, verified keys only",async()=>{
  for(const name of Object.keys(limits)){

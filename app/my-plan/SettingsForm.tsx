@@ -3,11 +3,11 @@
 import { useRef, useState, type FormEvent } from "react";
 import { saveFinancialSettings, type SaveResult } from "./actions";
 
-type Settings = { total_assets: number | string; annual_expenses: number | string; expected_return: number | string };
+type Settings = { monthly_contribution?: number | string; total_assets: number | string; annual_expenses: number | string; expected_return: number | string };
 const messages = {
   RATE_LIMITED: "操作が多すぎます。少し待ってから再度お試しください。",
   SUCCESS: "保存しました。",
-  VALIDATION_ERROR: "総資産は0以上、年間支出は1以上の整数、利回りは0〜20の数値（小数2桁まで）で入力してください。金額は安全に扱える整数の範囲内で入力してください。",
+  VALIDATION_ERROR: "総資産・毎月の積立額は0以上、年間支出は1以上の整数、利回りは0〜20の数値（小数2桁まで）で入力してください。金額は安全に扱える整数の範囲内で入力してください。",
   UNAUTHORIZED: "ログインが必要です。再度ログインしてください。",
   SERVER_ERROR: "保存できませんでした。時間をおいて再度お試しください。",
 };
@@ -38,10 +38,11 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
       {([
         ["total_assets", "総資産（円）", "numeric"],
         ["annual_expenses", "年間支出（円）", "numeric"],
+        ["monthly_contribution", "毎月の積立額（円）", "numeric"],
         ["expected_return", "想定利回り（%・0〜20）", "decimal"],
       ] as const).map(([name, label, inputMode]) => <div key={name}>
         <label htmlFor={name} className="text-sm font-medium">{label}</label>
-        <input id={name} name={name} type="text" inputMode={inputMode} required defaultValue={initial?.[name] ?? ""}
+        <input id={name} name={name} type="text" inputMode={inputMode} required defaultValue={initial?.[name] ?? (name === "monthly_contribution" ? 0 : "")}
           className="mt-2 block w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-indigo-600" />
       </div>)}
       <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white disabled:opacity-50">{pending ? "保存中…" : "保存する"}</button>

@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 type FinancialSettings = {
   total_assets: number | string;
+  monthly_contribution: number | string;
   annual_expenses: number | string;
   expected_return: number | string;
   updated_at: string;
@@ -39,10 +40,10 @@ export default async function MyPlanPage() {
     // Do not accept an owner ID from page props, query parameters or the client.
     const { data, error } = await supabase
       .from("user_financial_settings")
-      .select("total_assets, annual_expenses, expected_return, updated_at")
+      .select("total_assets, annual_expenses, expected_return, monthly_contribution, updated_at")
       .maybeSingle();
     if (error) readFailed = true;
-    else settings = data;
+    else settings = data ? { ...data, monthly_contribution: data.monthly_contribution ?? 0 } : null;
   } catch {
     readFailed = true;
   }
@@ -62,6 +63,7 @@ export default async function MyPlanPage() {
           <dl className="mt-4 space-y-4 text-sm">
             <div><dt className="text-gray-600">総資産</dt><dd className="mt-1 break-words font-medium">{settings.total_assets} 円</dd></div>
             <div><dt className="text-gray-600">年間支出</dt><dd className="mt-1 break-words font-medium">{settings.annual_expenses} 円</dd></div>
+            <div><dt className="text-gray-600">毎月の積立額</dt><dd className="mt-1 break-words font-medium">{settings.monthly_contribution} 円</dd></div>
             <div><dt className="text-gray-600">想定利回り</dt><dd className="mt-1 font-medium">{settings.expected_return}%</dd></div>
             <div><dt className="text-gray-600">更新日時</dt><dd className="mt-1 break-words"><time dateTime={settings.updated_at}>{settings.updated_at}</time></dd></div>
           </dl>

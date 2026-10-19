@@ -21,16 +21,17 @@ export async function saveFinancialSettings(form: FormData): Promise<SaveResult>
     if (limit !== "ALLOWED") return { status: limit };
     const total_assets = amount(form.get("total_assets"), 0);
     const annual_expenses = amount(form.get("annual_expenses"), 1);
+    const monthly_contribution = amount(form.get("monthly_contribution"), 0);
     const rawReturn = form.get("expected_return");
     // NUMERIC(5,2): reject excess precision instead of silently rounding it.
     const expected_return = typeof rawReturn === "string" && /^\d+(\.\d{1,2})?$/.test(rawReturn)
       ? Number(rawReturn) : NaN;
-    if (total_assets === null || annual_expenses === null || !Number.isFinite(expected_return) || expected_return < 0 || expected_return > 20) {
+    if (total_assets === null || annual_expenses === null || monthly_contribution === null || !Number.isFinite(expected_return) || expected_return < 0 || expected_return > 20) {
       return { status: "VALIDATION_ERROR" };
     }
     const supabase = await createClient({ writableCookies: true });
     const { error } = await supabase.from("user_financial_settings").upsert({
-      user_id: user.id, total_assets, annual_expenses, expected_return,
+      user_id: user.id, total_assets, annual_expenses, expected_return, monthly_contribution,
     }, { onConflict: "user_id" });
     if (error) return { status: "SERVER_ERROR" };
     revalidatePath("/my-plan");
