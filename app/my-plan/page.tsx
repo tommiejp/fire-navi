@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import AssetChange from "./AssetChange";
 import FireForecast from "./FireForecast";
+import FireProjection from "./FireProjection";
 import FireProgress from "./FireProgress";
 import SettingsForm from "./SettingsForm";
 import AssetHistoryForm from "./AssetHistoryForm";
@@ -73,6 +74,7 @@ export default async function MyPlanPage() {
       </section>
       {!readFailed && <FireProgress settings={settings} />}
       {!readFailed && <FireForecast settings={settings} />}
+      {!readFailed && <FireProjection settings={settings} />}
       <AssetChange />
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-record-title">
         <h2 id="history-record-title" className="text-lg font-semibold">現在の資産を履歴に記録</h2>
