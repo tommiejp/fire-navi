@@ -20,6 +20,7 @@ export function evaluateScenario(totalAssets: number | string, inputs: ScenarioI
   const projection = calculateFireProjection(settings, { stopAtAchievement: false });
   return {
     target,
+    projection,
     forecast,
     assetsAt30: projection?.points.find(point => point.year === 30)?.assets ?? null,
   };
