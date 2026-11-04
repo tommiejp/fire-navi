@@ -56,10 +56,10 @@ test("responsive comparison, labels, read-only base, edits only one scenario",()
  const inputs=tree.filter(n=>n.type==="input");
  assert.equal(tree.find(n=>n.type===ChartStub).props.results.filter(Boolean).length,3);
  assert.equal(inputs.length,9);assert.equal(inputs.filter(n=>n.props.readOnly).length,3);
- assert.deepEqual(state,[initial,initial,initial]);
+ assert.deepEqual(state,helpers.initialScenarios(settings));
  inputs[3].props.onChange({target:{value:""}});
  assert.equal(state[1].annual_expenses,"");
- assert.deepEqual(state[0],initial);assert.deepEqual(state[2],initial);
+ assert.deepEqual(state[0],initial);assert.deepEqual(state[2],helpers.initialScenarios(settings)[2]);
  tree=nodes(View({settings}));
  assert.equal(tree.filter(n=>n.type==="p"&&n.props.children==="入力内容を確認してください").length,1);
  assert.equal(tree.filter(n=>n.type==="dl").length,2);
@@ -128,4 +128,25 @@ test("only invalid series omitted; unsafe future remains a gap; yen formatting",
  assert.ok(tree.filter(n=>n.type==="Line").every(n=>n.props.connectNulls===false));
  assert.deepEqual(tree.find(n=>n.type==="Tooltip").props.formatter(1234567,"現状プラン"),["1,234,567 円","現状プラン"]);
  assert.equal(Chart({results:[null,null,null]}),null);
+});
+
+test("UX defaults preserve current settings, add 30000 and floor expenses at 90%",()=>{
+ const original=Object.freeze({...settings});
+ const plans=helpers.initialScenarios(original);
+ assert.deepEqual(plans,[initial,{...initial,monthly_contribution:"130000"},{...initial,annual_expenses:"2160000"}]);
+ assert.deepEqual(original,settings);
+ assert.equal(helpers.initialScenarios({...settings,annual_expenses:101})[2].annual_expenses,"90");
+ assert.equal(helpers.initialScenarios({...settings,annual_expenses:1})[2].annual_expenses,"1");
+});
+test("UX defaults safe-integer limits and invalid input fallback",()=>{
+ const max=Number.MAX_SAFE_INTEGER;
+ assert.equal(helpers.initialScenarios({...settings,monthly_contribution:max-30000})[1].monthly_contribution,String(max));
+ for(const value of [max-29999,max,max+1,-1,Infinity,NaN,"1e3","",1.5]){
+  assert.equal(helpers.initialScenarios({...settings,monthly_contribution:value})[1].monthly_contribution,String(value));
+ }
+ const reduced=helpers.initialScenarios({...settings,annual_expenses:max})[2].annual_expenses;
+ assert.equal(reduced,String(BigInt(max)*9n/10n));
+ assert.ok(Number.isSafeInteger(Number(reduced)));
+ for(const value of [max+1,0,-1,NaN,Infinity,"1e3","",1.5])
+  assert.equal(helpers.initialScenarios({...settings,annual_expenses:value})[2].annual_expenses,String(value));
 });

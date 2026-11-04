@@ -28,7 +28,7 @@ export default async function AssetChange() {
         <p className="mt-2 text-xs text-gray-600">最新の記録と、その1つ前の記録を比較しています。</p>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div><dt className="text-sm text-gray-600">増減額</dt><dd className="mt-1 break-words text-xl font-semibold">{money.format(change.amount)} 円</dd></div>
-          <div><dt className="text-sm text-gray-600">増減率</dt><dd className="mt-1 break-words text-xl font-semibold">{change.percentage === null ? "算出不可（前回0円）" : `${percent.format(change.percentage)}%`}</dd></div>
+          <div><dt className="text-sm text-gray-600">増減率</dt><dd className="mt-1 break-words text-xl font-semibold">{change.percentage === null ? "算出不可（前回0円）" : Math.abs(change.percentage) < 0.05 ? "ほぼ変化なし" : `${percent.format(change.percentage)}%`}</dd></div>
         </dl>
       </>}
     <Link href="/history" className="mt-4 inline-block text-sm font-medium text-indigo-700 underline underline-offset-4">資産推移を見る</Link>

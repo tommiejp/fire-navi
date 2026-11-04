@@ -8,6 +8,21 @@ export function initialScenario(settings: ForecastSettings): ScenarioInputs {
   return { annual_expenses: String(settings.annual_expenses), monthly_contribution: String(settings.monthly_contribution), expected_return: String(settings.expected_return) };
 }
 
+export function initialScenarios(settings: ForecastSettings): ScenarioInputs[] {
+  const current = initialScenario(settings);
+  const contribution = Number(current.monthly_contribution);
+  const expenses = Number(current.annual_expenses);
+  const safeAmount = (raw: string, value: number, minimum: number) =>
+    /^\d+$/.test(raw) && Number.isSafeInteger(value) && value >= minimum;
+  const increased = safeAmount(current.monthly_contribution, contribution, 0)
+    && contribution <= Number.MAX_SAFE_INTEGER - 30000
+    ? String(contribution + 30000) : current.monthly_contribution;
+  // Floor 90% to whole yen without multiplying a large integer; minimum one yen.
+  const reduced = safeAmount(current.annual_expenses, expenses, 1)
+    ? String(Math.max(1, expenses - Math.ceil(expenses / 10))) : current.annual_expenses;
+  return [current, { ...current, monthly_contribution: increased }, { ...current, annual_expenses: reduced }];
+}
+
 export function evaluateScenario(totalAssets: number | string, inputs: ScenarioInputs) {
   const amount = (value: string, min: number) => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= min;
   if (!amount(inputs.annual_expenses, 1) || !amount(inputs.monthly_contribution, 0)

@@ -3,7 +3,7 @@
 import ScenarioChart from "./ScenarioChart";
 import { useState } from "react";
 import type { ForecastSettings } from "@/lib/fire-forecast";
-import { compareForecasts, evaluateScenario, forecastText, initialScenario, scenarioNames } from "@/lib/fire-scenarios";
+import { compareForecasts, evaluateScenario, forecastText, initialScenario, initialScenarios, scenarioNames } from "@/lib/fire-scenarios";
 
 const yen = new Intl.NumberFormat("ja-JP", { maximumFractionDigits: 0 });
 const fields = [
@@ -13,13 +13,13 @@ const fields = [
 ] as const;
 
 export default function ScenarioComparison({ settings }: { settings: ForecastSettings }) {
-  const [plans, setPlans] = useState(() => scenarioNames.map(() => initialScenario(settings)));
+  const [plans, setPlans] = useState(() => initialScenarios(settings));
   const inputsByPlan = plans.map((plan, index) => index === 0 ? initialScenario(settings) : plan);
   const results = inputsByPlan.map(inputs => evaluateScenario(settings.total_assets, inputs));
   const baseline = results[0];
   return <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="scenario-title">
     <h2 id="scenario-title" className="text-lg font-semibold">シナリオ比較</h2>
-    <p className="mt-2 text-sm text-gray-600">現在資産は共通です。3プランは同じ条件から開始します。変更内容は保存されません。</p>
+    <p className="mt-2 text-sm text-gray-600">現在資産は共通です。積極積立は毎月＋30,000円、節約は年間支出90%（1円未満切捨て・最低1円）を初期値とします。安全に変更できない場合は現状値を使います。変更内容は保存されません。</p>
     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
       {scenarioNames.map((name, index) => {
         const inputs = inputsByPlan[index];

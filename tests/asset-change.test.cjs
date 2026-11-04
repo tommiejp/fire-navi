@@ -39,3 +39,20 @@ test("empty, one, zero previous and safe errors keep the history link",async()=>
  assert.ok((await render(rows(100,0))).html.includes("算出不可（前回0円）"));
  const {html}=await render(null,{message:"private token"});assert.ok(html.includes("取得できませんでした"));assert.ok(!html.includes("private token"));assert.ok(html.includes('href="/history"'));
 });
+
+test("tiny signed changes show nearly unchanged but retain yen amounts",async()=>{
+ for(const [current,amount]of [[1000001,"+1 円"],[999999,"-1 円"],[1000000,"0 円"]]){
+  const {html}=await render(rows(current,1000000));
+  assert.ok(html.includes("ほぼ変化なし"));assert.ok(html.includes(amount));
+ }
+});
+test("0.05 percent boundary and normal changes retain percentage; zero denominator wins",async()=>{
+ for(const [current,previous,expected]of [[2001,2000,"+0.1%"],[1999,2000,"-0.1%"],[120,100,"+20%"],[80,100,"-20%"]]){
+  const {html}=await render(rows(current,previous));
+  assert.ok(html.includes(expected));assert.ok(!html.includes("ほぼ変化なし"));
+ }
+ for(const current of [0,1]){
+  const {html}=await render(rows(current,0));
+  assert.ok(html.includes("算出不可（前回0円）"));assert.ok(!html.includes("ほぼ変化なし"));
+ }
+});
