@@ -17,7 +17,7 @@ export default function ScenarioComparison({ settings }: { settings: ForecastSet
   const inputsByPlan = plans.map((plan, index) => index === 0 ? initialScenario(settings) : plan);
   const results = inputsByPlan.map(inputs => evaluateScenario(settings.total_assets, inputs));
   const baseline = results[0];
-  return <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="scenario-title">
+  return <section id="scenario-comparison" tabIndex={-1} className="scroll-mt-4 mt-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="scenario-title">
     <h2 id="scenario-title" className="text-lg font-semibold">シナリオ比較</h2>
     <p className="mt-2 text-sm text-gray-600">現在資産は共通です。積極積立は毎月＋30,000円、節約は年間支出90%（1円未満切捨て・最低1円）を初期値とします。安全に変更できない場合は現状値を使います。変更内容は保存されません。</p>
     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">

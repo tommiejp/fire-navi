@@ -55,11 +55,33 @@ export default async function MyPlanPage() {
     <main className="mx-auto max-w-2xl px-4 py-10">
       <Link href="/" className="text-sm font-medium text-indigo-700 underline underline-offset-4">← FIREナビトップへ戻る</Link>
       <Link href="/account" className="ml-4 text-sm text-indigo-700 underline">アカウント</Link>
-      <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="plan-title">
+      <header className="mt-6" aria-labelledby="plan-title">
         <h1 id="plan-title" className="text-2xl font-bold text-gray-900">マイプラン</h1>
         <p className="mt-3 text-sm text-gray-600">ログイン済み</p>
         <p className="mt-1 break-all text-gray-900">{user.email ?? "メールアドレス未登録"}</p>
-        <h2 className="mt-8 text-lg font-semibold">FIRE設定</h2>
+      </header>
+      <nav aria-label="マイプラン内の移動" className="mt-6 flex flex-wrap gap-2">
+        {[
+          ["current-position", "現在地"],
+          ["fire-settings", "設定"],
+          ...(!readFailed && settings ? [["future", "将来予測"], ["scenario-comparison", "シナリオ比較"]] : []),
+          ["asset-records", "資産記録"],
+        ].map(([id, label]) => <a key={id} href={`#${id}`}
+          className="inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">{label}</a>)}
+      </nav>
+      <section id="current-position" tabIndex={-1} className="mt-10 scroll-mt-4" aria-labelledby="current-position-title">
+        <h2 id="current-position-title" className="text-xl font-bold">FIREの現在地</h2>
+        <p className="mt-2 text-sm text-gray-600">保存した設定から、目標への進捗と達成までの見通しを確認できます。</p>
+        {!readFailed && settings ? <>
+          <FireProgress settings={settings} />
+          <FireForecast settings={settings} />
+        </> : <p className="mt-4 text-sm text-gray-600">{readFailed
+          ? "設定を取得できないため、現在地を表示できません。"
+          : "まず下のFIRE設定を保存すると、進捗と予測が表示されます。"}</p>}
+        {!readFailed && !settings && <a href="#fire-settings" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">FIRE設定を入力する</a>}
+      </section>
+      <section id="fire-settings" tabIndex={-1} className="scroll-mt-4 mt-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="settings-title">
+        <h2 id="settings-title" className="text-xl font-bold">FIRE設定</h2>
         {readFailed ? (
           <p role="alert" className="mt-3 text-sm text-red-700">設定を取得できませんでした。時間をおいて再度お試しください。</p>
         ) : settings ? (
@@ -73,15 +95,20 @@ export default async function MyPlanPage() {
         ) : <p className="mt-3 text-sm text-gray-600">設定はまだありません</p>}
         {!readFailed && <SettingsForm initial={settings} />}
       </section>
-      {!readFailed && <FireProgress settings={settings} />}
-      {!readFailed && <FireForecast settings={settings} />}
-      {!readFailed && <FireProjection settings={settings} />}
+      {!readFailed && settings && <section id="future" tabIndex={-1} className="mt-10 scroll-mt-4" aria-labelledby="future-title">
+        <h2 id="future-title" className="text-xl font-bold">将来予測</h2>
+        <FireProjection settings={settings} />
+      </section>}
       {!readFailed && settings && <ScenarioComparison key={JSON.stringify([settings.total_assets, settings.annual_expenses, settings.monthly_contribution, settings.expected_return])} settings={settings} />}
-      <AssetChange />
-      <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-record-title">
-        <h2 id="history-record-title" className="text-lg font-semibold">現在の資産を履歴に記録</h2>
+      <section id="asset-records" tabIndex={-1} className="mt-10 scroll-mt-4" aria-labelledby="asset-records-title">
+        <h2 id="asset-records-title" className="text-xl font-bold">資産記録</h2>
+        <p className="mt-2 text-sm text-gray-600">現在の資産を記録し、前回からの変化やこれまでの推移を確認できます。</p>
+        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="history-record-title">
+        <h3 id="history-record-title" className="text-lg font-semibold">現在の資産を履歴に記録</h3>
         <p className="mt-2 text-sm text-gray-600">記録はFIRE設定の保存とは別に行われます。</p>
         <AssetHistoryForm initialAssets={settings?.total_assets ?? null} />
+        </section>
+        <AssetChange />
       </section>
     </main>
   );

@@ -9,7 +9,7 @@ export default function FireProgress({ settings }: {
   const progress = calculateFireProgress(settings);
   if (!progress) return null;
   return <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="fire-progress-title">
-    <h2 id="fire-progress-title" className="text-lg font-semibold">FIRE進捗</h2>
+    <h3 id="fire-progress-title" className="text-lg font-semibold">FIRE進捗</h3>
     <dl className="mt-4 grid gap-4 sm:grid-cols-2">
       <div><dt className="text-sm text-gray-600">FIRE目標額</dt><dd className="mt-1 break-words text-xl font-bold">{yen.format(progress.target)} 円</dd></div>
       <div><dt className="text-sm text-gray-600">FIREまでの残額</dt><dd className="mt-1 break-words text-xl font-bold">{yen.format(progress.remaining)} 円</dd></div>

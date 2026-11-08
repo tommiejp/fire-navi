@@ -20,7 +20,7 @@ export default async function AssetChange() {
   }
   const change = calculateAssetChange(rows);
   return <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" aria-labelledby="asset-change-title">
-    <h2 id="asset-change-title" className="text-lg font-semibold">前回記録比</h2>
+    <h3 id="asset-change-title" className="text-lg font-semibold">前回記録比</h3>
     {failed ? <p role="alert" className="mt-3 text-sm text-red-700">前回比を取得できませんでした。時間をおいて再度お試しください。</p>
       : rows.length < 2 ? <p className="mt-3 text-sm text-gray-600">資産履歴を2件以上記録すると前回比を表示します。</p>
       : !change ? <p className="mt-3 text-sm text-gray-600">前回比を計算できません。</p>

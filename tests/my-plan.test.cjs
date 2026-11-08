@@ -10,13 +10,13 @@ function load({ user = { email: "member@example.com" }, authError, result = { da
   const calls = [];
   const initialValues = [];
   const mocks = {
-    "./ScenarioComparison": { default: () => null },
-    "./FireProjection": { default: () => null },
-    "./FireForecast": { default: () => null },
-    "./AssetChange": { default: () => null },
-    "./FireProgress": { default: () => null },
-    "./AssetHistoryForm": { default: () => null },
-    "./SettingsForm": { default: ({initial}) => { initialValues.push(initial); return null; } },
+    "./ScenarioComparison": { default: () => React.createElement("div", { "data-feature": "ScenarioComparison", id: "scenario-comparison" }) },
+    "./FireProjection": { default: () => React.createElement("div", { "data-feature": "FireProjection" }) },
+    "./FireForecast": { default: () => React.createElement("div", { "data-feature": "FireForecast" }) },
+    "./AssetChange": { default: () => React.createElement("div", { "data-feature": "AssetChange" }) },
+    "./FireProgress": { default: () => React.createElement("div", { "data-feature": "FireProgress" }) },
+    "./AssetHistoryForm": { default: () => React.createElement("div", { "data-feature": "AssetHistoryForm" }) },
+    "./SettingsForm": { default: ({initial}) => { initialValues.push(initial); return React.createElement("div", { "data-feature": "SettingsForm" }); } },
     "next/link": { default: ({ children, ...props }) => React.createElement("a", props, children) },
     "next/navigation": { redirect: path => { throw Error(`REDIRECT:${path}`); } },
     "@/lib/auth/user": { getAuthenticatedUser: async () => { calls.push("auth"); if (authError) throw authError; return user; } },
@@ -99,5 +99,46 @@ test("monthly contribution is read into the form, missing values default to zero
   assert.ok(html.includes("毎月の積立額"));
   assert.ok(html.includes((value??0)+" 円"));
   assert.ok(!html.includes("attacker"));
+ }
+});
+
+test("sections follow current position, settings, projection, comparison, recording order", async()=>{
+ const data={total_assets:100,annual_expenses:200,monthly_contribution:10,expected_return:5,updated_at:"2026-11-04"};
+ const {page}=load({result:{data,error:null}});
+ const tree=await page();
+ const html=renderToStaticMarkup(tree);
+ const ordered=["current-position-title",'data-feature="FireProgress"','data-feature="FireForecast"',
+  'id="fire-settings"','data-feature="SettingsForm"',"future-title",'data-feature="FireProjection"',
+  'data-feature="ScenarioComparison"',"asset-records-title",'data-feature="AssetHistoryForm"','data-feature="AssetChange"'];
+ let previous=-1;
+ for(const marker of ordered){
+  const index=html.indexOf(marker);
+  assert.ok(index>previous,marker);previous=index;
+ }
+ for(const name of ["FireProgress","FireForecast","SettingsForm","FireProjection","ScenarioComparison","AssetHistoryForm","AssetChange"])
+  assert.equal(html.split('data-feature="'+name+'"').length-1,1,name);
+ assert.ok(tree.props.className.includes("max-w-2xl"));
+ assert.ok(tree.props.className.includes("px-4"));
+ const children=React.Children.toArray(tree.props.children);
+ assert.ok(children.filter(n=>n.type==="section").every(n=>n.props["aria-labelledby"]));
+ assert.ok(!children.some(n=>/(?:^|\s)(?:grid-cols|flex-row|order-)/.test(n.props.className??"")));
+});
+test("unregistered settings explain next step and retain setting and recording forms",async()=>{
+ const html=renderToStaticMarkup(await load().page());
+ assert.ok(html.includes("まず下のFIRE設定を保存すると"));
+ for(const name of ["SettingsForm","AssetHistoryForm","AssetChange"])assert.ok(html.includes('data-feature="'+name+'"'));
+ for(const name of ["FireProgress","FireForecast","FireProjection","ScenarioComparison"])assert.ok(!html.includes('data-feature="'+name+'"'));
+});
+
+test("navigation only links rendered sections and wraps on narrow screens",async()=>{
+ for(const options of [{},{result:{data:{total_assets:100,annual_expenses:200,monthly_contribution:10,expected_return:5,updated_at:"2026-11-08"},error:null}},{clientError:Error("private")}]){
+  const html=renderToStaticMarkup(await load(options).page());
+  const links=[...html.matchAll(/href="#([^"]+)"/g)].map(match=>match[1]);
+  for(const id of links)assert.ok(html.includes('id="'+id+'"'),id);
+  assert.ok(html.includes("flex-wrap"));
+  assert.ok(html.includes("min-h-11"));
+  assert.equal(links.includes("future"),Boolean(options.result));
+  assert.equal(links.includes("scenario-comparison"),Boolean(options.result));
+  assert.equal(html.includes("FIRE設定を入力する"),!options.result&&!options.clientError);
  }
 });
