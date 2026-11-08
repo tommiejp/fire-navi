@@ -4,7 +4,7 @@ const fs=require("node:fs"),path=require("node:path"),ts=require("typescript"),R
 function load(file,mocks,browser={}) {
  const module={exports:{}};
  const code=ts.transpileModule(fs.readFileSync(path.join(__dirname,"..",file),"utf8"),{compilerOptions:{target:ts.ScriptTarget.ES2017,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
- new Function("require","module","exports","FormData",code)(n=>{if(n in mocks)return mocks[n];if(n==="react/jsx-runtime"||n==="react")return require(n);throw Error(n)},module,module.exports,browser.FormData||FormData);
+ new Function("require","module","exports","FormData",code)(n=>{if(n in mocks)return mocks[n];if(n==="@/lib/settings-input")return load("lib/settings-input.ts",{});if(n==="react/jsx-runtime"||n==="react")return require(n);throw Error(n)},module,module.exports,browser.FormData||FormData);
  return module.exports;
 }
 function setup({user={id:"verified"},error=null,fail=false}={}) {
@@ -41,7 +41,7 @@ test("form initial values, no owner input, duplicate prevention, success and ret
  const Form=load("app/my-plan/SettingsForm.tsx",{
  react:{useState:v=>[v,x=>states.push(x)],useRef:v=>({current:v})},
  "./actions":{saveFinancialSettings:async()=>{calls++;return new Promise(r=>resolve=r)}}
- },{FormData:class{}}).default;
+ },{FormData:class{get(key){return {total_assets:"10",annual_expenses:"20",monthly_contribution:"0",expected_return:"5"}[key]}}}).default;
  const tree=nodes(Form({initial:{total_assets:10,annual_expenses:20,expected_return:5}}));
  assert.deepEqual(tree.filter(n=>n.type==="input").map(n=>[n.props.name,n.props.defaultValue]),[["total_assets",10],["annual_expenses",20],["monthly_contribution",0],["expected_return",5]]);
  const handler=tree.find(n=>n.type==="form").props.onSubmit,event={preventDefault(){},currentTarget:{}};
@@ -66,4 +66,31 @@ test("monthly contribution form defaults and saved initial value",()=>{
   const input=nodes(Form({initial})).find(n=>n.type==="input"&&n.props.name==="monthly_contribution");
   assert.equal(input.props.defaultValue,expected);
  }
+});
+
+test("input guidance matches server boundaries",()=>{
+ const validate=load("lib/settings-input.ts",{}).settingsInputError;
+ for(const name of ["total_assets","annual_expenses","monthly_contribution"]){
+  for(const value of ["","-1","1.5","1e3","NaN","Infinity","1,000","9007199254740992"])assert.ok(validate(name,value));
+  assert.equal(validate(name,"9007199254740991"),undefined);
+ }
+ assert.ok(validate("annual_expenses","0"));
+ assert.equal(validate("total_assets","0"),undefined);
+ for(const value of ["0","5.25","20"])assert.equal(validate("expected_return",value),undefined);
+ for(const value of ["-1","20.01","1e1","5.123","NaN","Infinity"])assert.ok(validate("expected_return",value));
+});
+test("invalid submit retains values, skips action and focuses first invalid field",async()=>{
+ let calls=0,focused;const states=[];
+ const Form=load("app/my-plan/SettingsForm.tsx",{
+ react:{useState:v=>[v,x=>states.push(x)],useRef:v=>({current:v})},
+ "./actions":{saveFinancialSettings:async()=>{calls++}}
+ },{FormData:class{get(name){return name==="total_assets"?"0":""}}}).default;
+ const tree=nodes(Form({initial:null}));
+ const form=tree.find(n=>n.type==="form");
+ assert.equal(form.props.noValidate,true);
+ await form.props.onSubmit({preventDefault(){},currentTarget:{querySelector(selector){focused=selector;return {focus(){}}}}});
+ assert.equal(calls,0);assert.equal(focused,'[name="annual_expenses"]');
+ const errors=states.find(s=>s&&s.annual_expenses);
+ assert.ok(errors.annual_expenses);assert.ok(errors.expected_return);
+ for(const input of tree.filter(n=>n.type==="input"))assert.ok(input.props["aria-describedby"].includes("-hint"));
 });
