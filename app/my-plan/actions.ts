@@ -54,7 +54,10 @@ export async function recordCurrentAssets(form: FormData): Promise<SaveResult> {
     const { error } = await supabase.from("asset_history").insert({
       user_id: user.id, total_assets,
     });
-    return { status: error ? "SERVER_ERROR" : "SUCCESS" };
+    if (error) return { status: "SERVER_ERROR" };
+    revalidatePath("/my-plan");
+    revalidatePath("/history");
+    return { status: "SUCCESS" };
   } catch {
     return { status: "SERVER_ERROR" };
   }

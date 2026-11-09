@@ -9,11 +9,11 @@ function load(file,mocks,browser={}) {
 }
 
 function setup({user={id:"verified"},error=null,failAt=null}={}) {
- const writes=[];
+ const writes=[],refreshes=[];
  let clients=0;
  const api=load("app/my-plan/actions.ts",{
  "@/lib/rate-limit":{checkRateLimit:async()=>"ALLOWED"},
- "next/cache":{revalidatePath:()=>{throw Error("No revalidation needed");}},
+ "next/cache":{revalidatePath:path=>refreshes.push(path)},
  "@/lib/auth/user":{getAuthenticatedUser:async()=>{if(failAt==="auth")throw Error("private auth");return user;}},
  "@/lib/supabase/server":{createClient:async options=>{
   clients++;if(failAt==="client")throw Error("private config");
@@ -22,7 +22,7 @@ function setup({user={id:"verified"},error=null,failAt=null}={}) {
    writes.push(payload);if(failAt==="db")throw Error("private db");return {error};
   }}}};
  }}});
- return {writes,clients:()=>clients,record:async(value="100",extras={})=>{
+ return {writes,refreshes,clients:()=>clients,record:async(value="100",extras={})=>{
   const form=new FormData();if(value!==null)form.set("total_assets",value);
   for(const [k,v]of Object.entries(extras))form.set(k,v);
   return api.recordCurrentAssets(form);
@@ -57,4 +57,12 @@ test("form has one assets input, initial value, duplicate guard and retry after 
  const first=submit(event);await submit(event);assert.equal(calls,1);resolve({status:"SERVER_ERROR"});await first;
  assert.ok(states.includes(true));assert.ok(states.includes(false));assert.ok(states.includes("SERVER_ERROR"));
  const second=submit(event);assert.equal(calls,2);resolve({status:"SUCCESS"});await second;assert.ok(states.includes("SUCCESS"));
+});
+
+test("successful recording refreshes current summary and history; failure does not",async()=>{
+ const success=setup();await success.record();
+ assert.deepEqual(success.refreshes,["/my-plan","/history"]);
+ for(const options of [{user:null},{error:{message:"private"}},{failAt:"db"}]){
+  const failed=setup(options);await failed.record();assert.deepEqual(failed.refreshes,[]);
+ }
 });
