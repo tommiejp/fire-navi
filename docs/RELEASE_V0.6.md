@@ -1,8 +1,10 @@
 # v0.6 リリース候補
 
 確認日: 2026-11-09（日本時間）
-アプリ候補: 0d37114e528cc1d3b34c672acdf011cb023448ed
+アプリ候補: 055a75d（履歴記録直後の再検証修正を含む）
 比較基準: f47f2b5（v0.5.1 UX改善）
+
+最終判定: **GO**。下記「残項目の最終実E2E」を最新結果とする。途中経過のNO-GO・未確認記録はその時点の履歴。push・Production deployは未実施。
 
 ## 変更
 - 02c5936: マイプランのセクション整理、ページ内ナビ、初回設定導線
@@ -62,3 +64,40 @@
 - テスト履歴は5000000円（2026/11/09 16:21:52 JST）と5000001円の計2件を追加。削除UIがなく残存。設定は復元済み、他ユーザーは変更なし。
 - 修正後の全114テスト、TypeScript、production build成功。
 - 必須のNetwork/二重送信E2Eなどが残るため最終判定はNO-GO。push/deploy未実施。
+
+
+## 残項目の最終実E2E（2026-11-09、055a75d）
+test-a@example.comのログイン済みセッションを使用。今回はアプリ修正なし。
+
+### 計測方法
+接続ブラウザにNetworkパネル取得APIがなかったため、Next.js instrumentation-clientの一時的な開発用観測を使用した。
+fetchの開始/終了、HTTP status、通信失敗、PerformanceObserverのresource status、CSPイベントを可視DOMに記録し、実ブラウザで読み取った。
+元のfetchを1回呼びそのResponseをそのまま返す観測のみ。リトライ・遅延・認証迂回は行わない。
+URLのpathnameのみを記録し、query・header値・body・token・cookieは保存しない。
+検証後に一時ファイルを削除し、診断DOMがなくなることを確認。最終アプリソースは055a75dと同一。
+
+### PASS
+- 保存ボタンのクリック1回: Server Action POST 1件、HTTP 200。
+- Enter送信: Server Action POST 1件、HTTP 200。
+- 素早いダブルクリック: Server Action POST 1件、HTTP 200。意図しない追加保存なし。
+- マウスクリックで総資産空欄・年間支出0を送信: 総資産へフォーカス、両項目のaria-invalid・エラー表示、積立0・利回り5の保持を確認。
+- エラー修正後、元の総資産5000000、年間支出3000000、積立0、利回り5で正常保存。
+- シナリオの積立60000への変更は即時更新、追加fetch 0件。ページ移動後に比較初期値へ戻った。
+- 履歴記録直後に前回比が-1円/ほぼ変化なしへ即時更新。historyの最新記録・グラフへ反映。
+- /my-plan、/history、/accountを375x812と1280x900で確認。各ページ横overflowなし、表示欠落・カード/文字の重なりなし、ボタン使用可能。
+- my-planの375pxでナビ2行への折り返し、保存ボタン幅293px、エラー表示を確認。
+- my-planの1280pxでシナリオ3列が同じ高さに配置。グラフ実寸590x288、590x320。
+- historyのグラフは375px時293x256、1280px時590x288。実描画をスクリーンショットで確認。
+- accountは両画面幅でメール、表示名入力、保存/logoutボタンが欠落・重なりなく表示。
+- logout POSTはHTTP 200、トップへ遷移。直接my-planへアクセスするとloginへ。
+- 設定読込から保存・履歴保存・history/account・logoutまで、観測fetch 10件すべて200、resource 60件で4xx/5xx・失敗イベント0、強制CSP違反0、Console error 0。
+- 最終ソースで全114テストPASS、TypeScript PASS、production build PASS。
+
+### 非阻害の警告・限界
+- Recharts初回計測前のwidth/height=-1警告: 計測後は上記正の寸法で描画正常。今回の画面幅変更でも正常化し、非阻害。
+- CSP Report-Onlyのscript-src-elem/style-src-elem/style-src-attr通知: Next.js runtime・Recharts等のinline script/styleを候補ポリシーが報告。既存の段階導入方針どおりで、強制ポリシー違反ではなく、操作をブロックしない。詳細CSPを強制へ切り替える際に別途nonce/hash設計が必要。
+- 一時診断導入時のFast Refresh full reload警告: 開発環境のみ。一時ファイル除去済み。
+- 通信観測はブラウザからのfetch/resource。Server内部のSupabase/Redis通信内容・Productionの稼働を保証するものではない。
+- loading表示は前回実確認済み。通信throttleによる再現は未実施（任意項目）。
+- 専用アカウントに回帰確認用の5000000円履歴を1件追加（2026/11/09 16:30:32 JST）。削除UIがないため残存。既存データ削除なし、設定4項目は元値、updated_atは保存により更新。
+- 必須の残項目に未確認なし。ローカルのv0.6リリース判定はGO。Productionの環境/稼働確認とdeploy後スモークはリリース時に行う。
